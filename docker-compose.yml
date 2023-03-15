@@ -1,178 +1,34 @@
-version: "3.9"
+version: '3.3'
+
 services:
-  amotile:
-    profiles: [amotile]
-    image: localhost/sd-multi/amotile:latest
+  stable-diffusion:
+    container_name: automatic1111-sd-webui
     build:
       context: .
-      dockerfile: Dockerfile.amotile
-      args:
-        # Use a `.env` file to change this; see `env.example`:
-        - GIT_CHECKOUT=${AMOTILE_HASH:-8c1bd17080cd40cf42b66d11f470f260e2982ce5}
-        - AUTOMATIC1111_CHECKOUT=${AMOTILE_AUTOMATIC1111_HASH:-48dbf99e84045ee7af55bc5b1b86492a240e631e}
-        - AMOTILE_BACKEND_CHECKOUT=${AMOTILE_BACKEND_HASH:-c6b11731a8a76b6470e89c4c8a2c931672ec125b}
-    command: ${SD_MULTI_AMOTILE_COMMAND:-bash -c '/usr/bin/supervisord -c /etc/supervisor/supervisord.conf'}
-    init: true
-    ports:
-      - "4000:4000"
-      - "4001:4001"
-      - "7860:7860"
-    volumes:
-      - ./res:/res:ro
-      - ./output/amotile:/root/stable-diffusion-backend/data
-      - cache-amotile:/root/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-  automatic1111:
-    profiles: [automatic1111, auto1111, auto]
-    image: localhost/sd-multi/automatic1111:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.automatic1111
-      args:
-        # Use a `.env` file to change this; see `env.example`:
-        - GIT_CHECKOUT=${AUTOMATIC1111_HASH:-0cc0ee1bcb4c24a8c9715f66cede06601bfc00c8}
-        - TXT2VECTORGRAPHICS_CHECKOUT=${AUTOMATIC1111_TXT2VECTORGRAPHICS_HASH:-2b780584f603b9abebba02527f3e0c3eed63426b}
-        - DEFORUM_CHECKOUT=${AUTOMATIC1111_DEFORUM_HASH:-ff1769dab53220082a32de0dafc1534c6964f761}
-    command: ${SD_MULTI_AUTOMATIC1111_COMMAND:-bash -c 'python launch.py --disable-safe-unpickle --ckpt-dir /res/checkpoints'}
-    init: true
-    ports:
-      - "7860:7860"
-    volumes:
-      - ./res:/res:ro
-      - ./res/checkpoints:/res/checkpoints:rw
-      - ./output:/root/stable-diffusion-webui/outputs
-      - cache-automatic1111:/root/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-  invokeai:
-    profiles: [invokeai, lstein]
-    image: localhost/sd-multi/invokeai:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.invokeai
-      args:
-        # Use a `.env` file to change this; see `env.example`:
-        - GIT_CHECKOUT=${INVOKEAI_HASH:-292ee06751ed0a0c833b492deda7dc5e99a428e1}
-    command: ${SD_MULTI_INVOKEAI_COMMAND:-bash -c 'python scripts/invoke.py --web --host 0.0.0.0'}
-    init: true
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./res:/res:ro
-      - ./output:/root/stable-diffusion-webui/outputs
-      - cache-invokeai:/root/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-  lama:
-    profiles: [lama]
-    image: localhost/sd-multi/lama:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.lama
-      args:
-        # Use a `.env` file to change this; see `env.example`:
-        - PIP_VERSION=${LAMA_VERSION:-0.26.0}
+      dockerfile: Dockerfile
+    user: 1000:1000
     environment:
-        - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
-    command: ${SD_MULTI_LAMA_COMMAND-}
-    init: true
-    ports:
-      - "8080:8080"
+      - PYTHONUNBUFFERED=1
     volumes:
-      - ./res:/res:ro
-      - ./output:/root/outputs
-      - cache-lama:/root/.cache
+      - ./modules:/app/modules:ro,z
+      - ./style.css:/app/style.css:ro,z
+      - ./ESRGAN:/app/ESRGAN:ro,z
+      - ./repositories:/app/repositories:ro,z
+      - ./src:/app/src:ro,z
+      - ./embeddings:/app/embeddings:ro,z
+      - cache:/home/webui/.cache
+      - realesrgan:/usr/local/lib/python3.10/dist-packages/realesrgan/weights
+      - ./outputs:/app/outputs
+      - ./log:/app/log
+      - ./runtime:/app/runtime
+    ports:
+      - 7860:7860
     deploy:
       resources:
         reservations:
           devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-  osi1880vr:
-    profiles: [osi1880vr]
-    image: localhost/sd-multi/osi1880vr:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.osi1880vr
-      args:
-        # Use a `.env` file to change this; see `env.example`:
-        - GIT_CHECKOUT=${OSI1880VR_HASH:-8dbd9f197a0da38e7047013c5217aa9c55ea2a29}
-    command: ${SD_MULTI_OSI1880VR_COMMAND:-bash -c 'python -m streamlit run scripts/webui_streamlit.py --theme.base dark'}
-    init: true
-    ports:
-      - "8501:8501"
-    volumes:
-      - ./res:/res:ro
-      - ./output:/root/stable-diffusion-webui/outputs
-      - cache-osi1880vr:/root/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-  sygil:
-    profiles: [sygil, hlky]
-    image: localhost/sd-multi/sygil:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.sygil
-      args:
-        # Use a `.env` file to change this; see `env.example`:
-        - GIT_CHECKOUT=${SYGIL_HASH:-ac4c246e87c9939a20d715ca38efac3daf329781}
-    command: ${SD_MULTI_SYGIL_COMMAND:-bash -c 'python scripts/webui.py'}
-    init: true
-    ports:
-      - "7860:7860"
-      - "8501:8501"
-    volumes:
-      - ./res:/res:ro
-      - ./output:/root/stable-diffusion-webui/outputs
-      - cache-sygil:/root/.cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
-
-  resources:
-    profiles: [resources]
-    image: localhost/sd-multi/resources:latest
-    build:
-      context: .
-      dockerfile: Dockerfile.resources
-    environment:
-        - HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-}
-    init: true
-    volumes:
-      - ./res:/res:rw
-
+            - capabilities: [gpu]
 
 volumes:
-  cache-amotile:
-  cache-automatic1111:
-  cache-invokeai:
-  cache-lama:
-  cache-osi1880vr:
-  cache-sygil:
+  cache:
+  realesrgan:
